@@ -67,103 +67,70 @@ def sample_batch_bpr(
 # Quick evaluation on VAL (subset users) for early stopping
 # ============================================================
 
-def eval_lightgcn_on_split(
-    model: LightGCN,
-    adj: torch.Tensor,
-    loader: TxtCFDataLoader,
-    split: str = "val",
-    K: int = 20,
-    device: torch.device = torch.device("cpu"),
-    max_eval_users: int = 50000,
-    batch_users: int = 1024,
-) -> Dict[str, float]:
-    """
-    Eval đơn giản cho early stopping.
-    - Không mask train items (cho phép recommend lại item đã mua).
-    - Giả định mỗi user có 1 item ground-truth trong val/test
-      (leave-last-1).
-    - Metrics: Precision@K, Recall@K, HitRate@K, NDCG@K, MAP@K
-    """
-    assert split in {"val", "test"}
+def eval_lightgcn_on_split(model, adj, loader, device, split="val", K=20, batch_users=1024):
 
     model.eval()
     with torch.no_grad():
         all_embs = model.propagate(adj)
-        user_embs = all_embs[:loader.num_users]
-        item_embs = all_embs[loader.num_users:]
+        user_emb = all_embs[:loader.num_users]
+        item_emb = all_embs[loader.num_users:]
 
-        if split == "val":
-            user_pos = loader.get_val_pos()
-        else:
-            user_pos = loader.get_test_pos()
+    # chọn correct truth
+    if split == "val":
+        truth = loader.get_val_truth()       # {user: item}
+    elif split == "test":
+        truth = loader.get_test_truth()      # {user: item}
+    else:
+        raise ValueError("split must be val or test")
 
-        user_ids = sorted(user_pos.keys())
-        if max_eval_users is not None and len(user_ids) > max_eval_users:
-            # lấy subset user để eval nhanh hơn
-            user_ids = user_ids[:max_eval_users]
+    users = sorted(truth.keys())
 
-        n_users_eval = len(user_ids)
-        if n_users_eval == 0:
-            return {
-                "precision": 0.0,
-                "recall": 0.0,
-                "hit": 0.0,
-                "ndcg": 0.0,
-                "map": 0.0,
-            }
+    # convert to list for iteration
+    n_users = len(users)
 
-        hit_sum = 0.0
-        prec_sum = 0.0
-        recall_sum = 0.0
-        ndcg_sum = 0.0
-        map_sum = 0.0
+    total_hits = 0
+    total_recall = 0
+    total_precision = 0
+    total_ndcg = 0
+    total_map = 0
 
-        import math
+    for start in range(0, n_users, batch_users):
+        end = min(start + batch_users, n_users)
+        batch = users[start:end]
 
-        for start in range(0, n_users_eval, batch_users):
-            end = min(start + batch_users, n_users_eval)
-            batch_u = user_ids[start:end]
+        u_emb = user_emb[batch]                     # shape B × d
+        scores = u_emb @ item_emb.T                # B × n_items
 
-            u_tensor = torch.tensor(batch_u, dtype=torch.long, device=device)
-            u_emb = user_embs[u_tensor]  # [B, d]
+        topk_scores, topk_items = torch.topk(scores, K, dim=1)
 
-            # scores = U * I^T
-            scores = torch.matmul(u_emb, item_embs.t())  # [B, n_items]
+        for i, u in enumerate(batch):
+            gt = truth[u]                           # 1 ground-truth item
+            rec_list = topk_items[i].tolist()
 
-            topk_scores, topk_idx = torch.topk(scores, K, dim=1)  # [B, K]
+            hit = 1 if gt in rec_list else 0
+            total_hits += hit
 
-            topk_idx = topk_idx.cpu().numpy()
+            rank = rec_list.index(gt) if hit else None
 
-            for i, u in enumerate(batch_u):
-                gt_items = user_pos[u]
-                if not gt_items:
-                    continue
-                # assume 1 gt item / user
-                gt = gt_items[0]
-                rec_list = topk_idx[i].tolist()
+            # recall
+            total_recall += hit / 1
+            # precision
+            total_precision += hit / K
 
-                if gt in rec_list:
-                    hit_sum += 1.0
-                    rank = rec_list.index(gt)  # 0-based
-                    prec_sum += 1.0 / K
-                    recall_sum += 1.0  # |G| = 1
-                    ndcg_sum += 1.0 / math.log2(rank + 2)
-                    map_sum += 1.0 / (rank + 1)
-                # else: all metrics contribution = 0
+            # NDCG
+            if hit:
+                total_ndcg += 1 / np.log2(rank + 2)
+            # MAP
+            if hit:
+                total_map += 1 / (rank + 1)
 
-        precision = prec_sum / n_users_eval
-        recall = recall_sum / n_users_eval
-        hitrate = hit_sum / n_users_eval
-        ndcg = ndcg_sum / n_users_eval
-        map_k = map_sum / n_users_eval
-
-        return {
-            "precision": precision,
-            "recall": recall,
-            "hit": hitrate,
-            "ndcg": ndcg,
-            "map": map_k,
-        }
+    return {
+        "HitRate": total_hits / n_users,
+        "Recall": total_recall / n_users,
+        "Precision": total_precision / n_users,
+        "NDCG": total_ndcg / n_users,
+        "MAP": total_map / n_users,
+    }
 
 
 # ============================================================
