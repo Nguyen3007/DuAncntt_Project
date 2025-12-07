@@ -322,20 +322,26 @@ def main():
                 f"patience = {patience_counter}/{args.early_stop_patience}"
             )
 
-        # Save last checkpoint
+        # Save last checkpoint (đầy đủ metadata, đúng format eval)
         last_path = Path(args.checkpoint_dir) / args.last_name
         torch.save(
             {
                 "epoch": epoch,
-                "model_state": model.state_dict(),
-                "optimizer_state": optimizer.state_dict(),
-                "args": vars(args),
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "num_users": loader.num_users,
+                "num_items": loader.num_items,
+                "emb_dim": args.emb_dim,
+                "n_layers": args.n_layers,
+                "reg_weight": args.reg_weight,
                 "best_recall": best_recall,
                 "best_epoch": best_epoch,
+                "args": vars(args),
             },
             last_path,
         )
-        print(f"💾 Saved last checkpoint to: {last_path}\n")
+        print(f" Saved last checkpoint to: {last_path}\n")
+
 
         if patience_counter >= args.early_stop_patience:
             print(
@@ -344,22 +350,26 @@ def main():
             )
             break
 
-    # 6) Save best model
-    if best_state is not None:
-        best_path = Path(args.checkpoint_dir) / args.best_name
-        torch.save(
-            {
-                "epoch": best_epoch,
-                "model_state": best_state,
-                "args": vars(args),
-                "best_recall": best_recall,
-            },
-            best_path,
-        )
-        print(f"\n✅ Saved BEST model to: {best_path}")
-    else:
-        print("\n⚠ Training finished but no best_state was recorded.")
-
+        # 6) Save best model (dùng để evaluate)
+        if best_state is not None:
+            best_path = Path(args.checkpoint_dir) / args.best_name
+            torch.save(
+                {
+                    "epoch": best_epoch,
+                    "model_state_dict": best_state,  # đã là state_dict trên CPU
+                    "num_users": loader.num_users,
+                    "num_items": loader.num_items,
+                    "emb_dim": args.emb_dim,
+                    "n_layers": args.n_layers,
+                    "reg_weight": args.reg_weight,
+                    "best_recall": best_recall,
+                    "args": vars(args),
+                },
+                best_path,
+            )
+            print(f"\n✅ Saved BEST model to: {best_path}")
+        else:
+            print("\n⚠ Training finished but no best_state was recorded.")
 
 if __name__ == "__main__":
     main()
