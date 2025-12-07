@@ -1,0 +1,9 @@
+{
+  "users_total_in_subset": 556884,
+  "users_used_for_split": 556884,
+  "users_skipped_lt3": 0,
+  "train_lines": 556884,
+  "val_lines": 556884,
+  "test_lines": 556884,
+  "policy": "per-user temporal split (val = last-1, test = last), keep repeats; train.txt lists unique items"
+}
