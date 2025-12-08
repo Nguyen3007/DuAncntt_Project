@@ -14,6 +14,7 @@ import torch.optim as optim
 from src.data_utils.dataloader import TxtCFDataLoader
 from src.data_utils.graph_builder import GraphBuilder
 from src.models.LightGCN import LightGCN
+from src.data_utils.graph_builder_time_decay import TimeDecayGraphBuilder
 
 
 # ============================================================
@@ -195,12 +196,40 @@ def parse_args():
     parser.add_argument("--best_name", type=str, default="lightgcn_hm_best.pt")
     parser.add_argument("--last_name", type=str, default="lightgcn_hm_last.pt")
 
+    # Time-decay graph options
+    parser.add_argument(
+        "--use_time_decay",
+        action="store_true",
+        help="Use time-decay weighted graph instead of binary graph",
+    )
+    parser.add_argument(
+        "--time_weight_csv",
+        type=str,
+        default=None,
+        help="Path to train_time_weights.csv (u,v,weight). "
+             "If None, will use <data_dir>/train_time_weights.csv",
+    )
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     seed_everything(args.seed)
+
+    # ===== AUTO-RENAME CHECKPOINT WHEN USING TIME-DECAY =====
+    if args.use_time_decay:
+        # tạo hậu tố _td trước khi .pt
+        stem_best = Path(args.best_name).stem + "_td"
+        stem_last = Path(args.last_name).stem + "_td"
+
+        # gán lại tên file
+        args.best_name = stem_best + ".pt"
+        args.last_name = stem_last + ".pt"
+
+        print("🔄 [Checkpoint] Time-decay mode enabled → renamed outputs:")
+        print(f"    BEST model → {args.best_name}")
+        print(f"    LAST model → {args.last_name}")
 
     device_str = args.device
     if device_str == "cuda" and not torch.cuda.is_available():
@@ -217,13 +246,29 @@ def main():
     print(f"\n[Data] Train interactions: {num_train_interactions:,}")
     print(f"[Data] Users: {loader.num_users:,} | Items: {loader.num_items:,}\n")
 
-    # 2) Build graph
-    print("[Graph] Building normalized adjacency...")
-    gb = GraphBuilder(
-        num_users=loader.num_users,
-        num_items=loader.num_items,
-        train_user_items=train_pos,
-    )
+    # 2) Build graph: binary hoặc time-decay
+    if args.time_weight_csv is None:
+        # Mặc định: lấy file train_time_weights.csv trong data_dir
+        args.time_weight_csv = os.path.join(args.data_dir, "train_time_weights.csv")
+
+    if args.use_time_decay:
+        print("[Graph] Building TIME-DECAY normalized adjacency...")
+        gb = TimeDecayGraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            weight_csv=args.time_weight_csv,
+            add_self_loop=False,  # LightGCN: không self-loop
+            verbose=True,
+        )
+    else:
+        print("[Graph] Building BINARY normalized adjacency...")
+        gb = GraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            train_user_items=train_pos,
+            # add_self_loop=False  # nếu trong GraphBuilder có tham số này thì để rõ luôn
+        )
+
     adj = gb.build_normalized_adj(device=device)
     print("[Graph] Done.\n")
 
@@ -356,7 +401,7 @@ def main():
             torch.save(
                 {
                     "epoch": best_epoch,
-                    "model_state_dict": best_state,  # đã là state_dict trên CPU
+                    "model_state_dict": best_state,
                     "num_users": loader.num_users,
                     "num_items": loader.num_items,
                     "emb_dim": args.emb_dim,
