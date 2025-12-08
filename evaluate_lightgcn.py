@@ -10,6 +10,7 @@ import torch
 from src.data_utils.dataloader import TxtCFDataLoader
 from src.data_utils.graph_builder import GraphBuilder
 from src.models.LightGCN import LightGCN
+from src.data_utils.graph_builder_time_decay import TimeDecayGraphBuilder
 
 
 def seed_everything(seed: int = 42):
@@ -77,11 +78,26 @@ def parse_args():
                         help="e.g. data/h_m")
     parser.add_argument("--checkpoint", type=str, required=True,
                         help="Path to trained model .pt")
-    parser.add_argument("--split", type=str, default="val", choices=["val", "test"])
+    parser.add_argument("--split", type=str, default="val",
+                        choices=["val", "test"])
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--batch_size", type=int, default=1024)
     parser.add_argument("--K", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
+
+    # ===== NEW: options cho time-decay graph =====
+    parser.add_argument(
+        "--use_time_decay",
+        action="store_true",
+        help="Use TimeDecayGraphBuilder instead of binary GraphBuilder",
+    )
+    parser.add_argument(
+        "--time_weight_csv",
+        type=str,
+        default=None,
+        help="Path to train_time_weights.csv; "
+             "default = <data_dir>/train_time_weights.csv",
+    )
 
     return parser.parse_args()
 
@@ -90,10 +106,11 @@ def main():
     args = parse_args()
     seed_everything(args.seed)
 
-    device = args.device
-    if device == "cuda" and not torch.cuda.is_available():
+    device_str = args.device
+    if device_str == "cuda" and not torch.cuda.is_available():
         print("CUDA not available, fallback to CPU.")
-        device = "cpu"
+        device_str = "cpu"
+    device = torch.device(device_str)
     print("Using device:", device)
 
     # 1) Load data
@@ -109,15 +126,33 @@ def main():
     num_eval_users = len(users_eval)
     print(f"\n[Eval] Split: {args.split}, Users: {num_eval_users}")
 
-    # 2) Build graph (train-only) & load model
+    # 2) Build graph (train-only), BINARY hoặc TIME-DECAY
     train_pos = loader.train
-    gb = GraphBuilder(
-        num_users=loader.num_users,
-        num_items=loader.num_items,
-        train_user_items=train_pos,
-    )
+
+    if args.use_time_decay:
+        if args.time_weight_csv is None:
+            args.time_weight_csv = os.path.join(
+                args.data_dir, "train_time_weights.csv"
+            )
+        print("[Graph] Using TIME-DECAY adjacency for evaluation")
+        gb = TimeDecayGraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            weight_csv=args.time_weight_csv,
+            add_self_loop=False,   # LightGCN không dùng self-loop
+            verbose=True,
+        )
+    else:
+        print("[Graph] Using BINARY adjacency for evaluation")
+        gb = GraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            train_user_items=train_pos,
+        )
+
     adj = gb.build_normalized_adj(device=device)
 
+    # 3) Load model
     ckpt = torch.load(args.checkpoint, map_location=device)
     model = LightGCN(
         num_users=ckpt["num_users"],
@@ -129,7 +164,7 @@ def main():
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
 
-    # 3) Propagate một lần (no grad)
+    # 4) Propagate một lần (no grad)
     with torch.no_grad():
         all_embs = model.propagate(adj)
         user_embs = all_embs[:loader.num_users]
@@ -148,12 +183,13 @@ def main():
         for start in range(0, num_eval_users, batch_size):
             end = min(start + batch_size, num_eval_users)
             batch_users = users_eval[start:end]
-            batch_users_t = torch.tensor(batch_users, dtype=torch.long, device=device)
+            batch_users_t = torch.tensor(batch_users, dtype=torch.long,
+                                         device=device)
 
             u_emb = user_embs[batch_users_t]            # [B, d]
             scores = torch.matmul(u_emb, item_embs.t()) # [B, num_items]
 
-            topk_scores, topk_indices = torch.topk(scores, K, dim=1)
+            _, topk_indices = torch.topk(scores, K, dim=1)
 
             for i, u in enumerate(batch_users):
                 gt_items = gt_dict[u]
