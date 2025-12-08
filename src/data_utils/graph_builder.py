@@ -7,7 +7,7 @@ import torch
 
 class GraphBuilder:
     """
-    Build normalized adjacency matrix for LightGCN-style models.
+    Build normalized adjacency matrix for LightGCN/NGCF-style models.
 
     Nodes:
       0 .. num_users-1                      : user nodes
@@ -15,6 +15,7 @@ class GraphBuilder:
 
     Edges:
       undirected, binary (no weights): user <-> item if interaction exists in train.
+      (tuỳ chọn) self-loop: i <-> i nếu add_self_loop=True (dùng cho NGCF).
     """
 
     def __init__(
@@ -22,16 +23,19 @@ class GraphBuilder:
         num_users: int,
         num_items: int,
         train_user_items: Dict[int, List[int]],
+        add_self_loop: bool = False,
     ):
         """
         Args:
             num_users: total number of users (indexed [0, num_users-1])
             num_items: total number of items (indexed [0, num_items-1])
             train_user_items: dict {user: [item1, item2, ...]} from train.txt
+            add_self_loop: nếu True -> dùng A + I (cho NGCF); False -> chỉ A (cho LightGCN).
         """
         self.num_users = num_users
         self.num_items = num_items
         self.train_user_items = train_user_items
+        self.add_self_loop = add_self_loop
 
         self.num_nodes = self.num_users + self.num_items
         self._adj_norm = None  # cache after first build
@@ -40,7 +44,8 @@ class GraphBuilder:
         """
         Build symmetric normalized adjacency matrix:
             A_hat = D^{-1/2} A D^{-1/2}
-        where A is the bipartite adjacency (user-item graph).
+        where A is the bipartite adjacency (user-item graph),
+        optionally with self-loop (A + I) nếu add_self_loop=True.
 
         Returns:
             torch.sparse.FloatTensor of shape (num_nodes, num_nodes)
@@ -82,7 +87,17 @@ class GraphBuilder:
             col = col[:idx]
             data = data[:idx]
 
+        # -------- 1b) Optional: thêm self-loop cho mọi node (A + I) --------
+        if self.add_self_loop:
+            self_loop_nodes = np.arange(self.num_nodes, dtype=np.int64)
+            row = np.concatenate([row, self_loop_nodes])
+            col = np.concatenate([col, self_loop_nodes])
+            data = np.concatenate(
+                [data, np.ones(self.num_nodes, dtype=np.float32)]
+            )
+
         # -------- 2) Compute node degrees --------
+        # deg_i = số edges đi ra từ node i
         deg = np.bincount(row, minlength=self.num_nodes).astype(np.float32)
 
         # D^{-1/2}, tránh chia cho 0
