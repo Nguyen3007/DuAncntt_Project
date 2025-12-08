@@ -10,7 +10,7 @@ import torch
 from src.data_utils.dataloader import TxtCFDataLoader
 from src.data_utils.graph_builder import GraphBuilder
 from src.models.NGCF import NGCF
-
+from src.data_utils.graph_builder_time_decay import TimeDecayGraphBuilder
 
 def seed_everything(seed: int = 42):
     import random
@@ -80,6 +80,19 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=1024)
     parser.add_argument("--K", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
+
+    parser.add_argument(
+        "--use_time_decay",
+        action="store_true",
+        help="Use time-decay weighted graph (must match training)"
+    )
+    parser.add_argument(
+        "--time_weight_csv",
+        type=str,
+        default=None,
+        help="Path to train_time_weights.csv; default <data_dir>/train_time_weights.csv"
+    )
+
     return parser.parse_args()
 
 
@@ -108,12 +121,28 @@ def main():
 
     # 2) Build graph TRAIN-ONLY cho NGCF (có self-loop A+I)
     train_pos = loader.train
-    gb = GraphBuilder(
-        num_users=loader.num_users,
-        num_items=loader.num_items,
-        train_user_items=train_pos,
-        add_self_loop=True,        # khác LightGCN ở đây
-    )
+
+    if args.time_weight_csv is None:
+        args.time_weight_csv = os.path.join(args.data_dir, "train_time_weights.csv")
+
+    if args.use_time_decay:
+        print("[Graph] Using TIME-DECAY NGCF graph (A + I) for eval...")
+        gb = TimeDecayGraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            weight_csv=args.time_weight_csv,
+            add_self_loop=True,
+            verbose=True,
+        )
+    else:
+        print("[Graph] Using BINARY NGCF graph (A + I) for eval...")
+        gb = GraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            train_user_items=train_pos,
+            add_self_loop=True,
+        )
+
     adj = gb.build_normalized_adj(device=device)
 
     # 3) Load checkpoint NGCF

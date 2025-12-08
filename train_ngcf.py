@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from src.data_utils.dataloader import TxtCFDataLoader
 from src.data_utils.graph_builder import GraphBuilder
 from src.models.NGCF import NGCF
-
+from src.data_utils.graph_builder_time_decay import TimeDecayGraphBuilder
 
 # =========================
 # Utils
@@ -216,11 +216,31 @@ def parse_args():
     parser.add_argument("--best_name", type=str, default="ngcf_hm_best.pt")
     parser.add_argument("--last_name", type=str, default="ngcf_hm_last.pt")
 
+    # Graph / time-decay options
+    parser.add_argument(
+        "--use_time_decay",
+        action="store_true",
+        help="Use time-decay weighted graph instead of binary graph"
+    )
+    parser.add_argument(
+        "--time_weight_csv",
+        type=str,
+        default=None,
+        help="Path to train_time_weights.csv (u,v,weight). "
+             "If None, will use <data_dir>/train_time_weights.csv"
+    )
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    # Nếu dùng time-decay mà vẫn để tên default thì tự đổi để phân biệt
+    if args.use_time_decay and args.best_name == "ngcf_hm_best.pt":
+        args.best_name = "ngcf_hm_best_td.pt"
+        args.last_name = "ngcf_hm_last_td.pt"
+        print("🔄 [Checkpoint] Time-decay mode → rename to:",
+              args.best_name, args.last_name)
     seed_everything(args.seed)
 
     device = args.device
@@ -238,15 +258,30 @@ def main():
     print(f"[Data] Users: {loader.num_users:,} | Items: {loader.num_items:,}")
 
     # 2) Build graph (NGCF: add_self_loop=True)
-    print("\n[Graph] Building normalized adjacency for NGCF (A+I)...")
-    gb = GraphBuilder(
-        num_users=loader.num_users,
-        num_items=loader.num_items,
-        train_user_items=train_pos,
-        add_self_loop=True,
-    )
+    # Nếu không truyền path riêng thì mặc định lấy trong data_dir
+    if args.time_weight_csv is None:
+        args.time_weight_csv = os.path.join(args.data_dir, "train_time_weights.csv")
+
+    if args.use_time_decay:
+        print("[Graph] Building TIME-DECAY NGCF graph (A + I)...")
+        gb = TimeDecayGraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            weight_csv=args.time_weight_csv,
+            add_self_loop=True,  # NGCF: A + I
+            verbose=True,
+        )
+    else:
+        print("[Graph] Building BINARY NGCF graph (A + I)...")
+        gb = GraphBuilder(
+            num_users=loader.num_users,
+            num_items=loader.num_items,
+            train_user_items=train_pos,
+            add_self_loop=True,
+        )
+
     adj = gb.build_normalized_adj(device=device)
-    print("[Graph] Done.")
+    print("[Graph] Done.\n")
 
     # 3) Init model + optimizer
     model = NGCF(
