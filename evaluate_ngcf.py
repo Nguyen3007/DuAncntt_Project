@@ -119,21 +119,29 @@ def main():
     # 3) Load checkpoint NGCF
     ckpt = torch.load(args.checkpoint, map_location=device)
 
-    layer_sizes = ckpt.get("layer_sizes", [ckpt["emb_dim"], ckpt["emb_dim"]])
-    mess_dropout = ckpt.get("mess_dropout", 0.1)
-    leaky_relu_slope = ckpt.get("leaky_relu_slope", 0.2)
+    args_ckpt = ckpt["args"]  # đã là dict do vars(args)
+
+    num_users = ckpt["num_users"]
+    num_items = ckpt["num_items"]
+
+    emb_dim = args_ckpt.get("emb_dim", 64)
+    layer_sizes = args_ckpt.get("layer_sizes", [emb_dim, emb_dim])
+    reg_weight = args_ckpt.get("reg_weight", 1e-4)
+    mess_dropout = args_ckpt.get("mess_dropout", 0.1)
+    leaky_relu_slope = args_ckpt.get("leaky_relu_slope", 0.2)
 
     model = NGCF(
-        num_users=ckpt["num_users"],
-        num_items=ckpt["num_items"],
-        emb_dim=ckpt["emb_dim"],
+        num_users=num_users,
+        num_items=num_items,
+        emb_dim=emb_dim,
         layer_sizes=layer_sizes,
-        reg_weight=ckpt["reg_weight"],
+        reg_weight=reg_weight,
         mess_dropout=mess_dropout,
         leaky_relu_slope=leaky_relu_slope,
     ).to(device)
 
-    model.load_state_dict(ckpt["model_state_dict"])
+    state_dict = ckpt.get("model_state")  # vì bạn lưu tên này
+    model.load_state_dict(state_dict)
     model.eval()
 
     # 4) Propagate một lần
