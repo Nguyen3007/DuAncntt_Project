@@ -1,0 +1,115 @@
+📚 DuAncntt_Project - Tài Liệu Hoàn Chỉnh
+========================================
+
+🎯 REPOSITORY STRUCTURE
+=======================
+
+DuAncntt_Project/
+│
+├── 📖 DOCUMENTATION (7 files - 3,141 dòng)
+│   │
+│   ├── INDEX.md                    291 lines  │  📚 Chỉ mục tài liệu
+│   ├── START.md                    197 lines  │  🚀 Quick start (5 phút)
+│   ├── README.md                   516 lines  │  ⭐ Main docs (30 phút)
+│   ├── GUIDE.md                    294 lines  │  🗺️ Navigation (15 phút)
+│   ├── EXAMPLES.md                 608 lines  │  🎯 Thực hành (1-2 giờ)
+│   ├── TECHNICAL_DETAILS.md        710 lines  │  🔬 Chi tiết (2-3 giờ)
+│   └── SUMMARY.md                  525 lines  │  📑 Tóm tắt (10 phút)
+│
+├── 🧠 MODELS
+│   ├── src/models/
+│   │   ├── LightGCN.py             174 lines  │  Simple & Fast
+│   │   └── NGCF.py                 217 lines  │  Complex & Powerful
+│
+├── 📊 DATA UTILITIES
+│   ├── src/data_utils/
+│   │   ├── dataloader.py            78 lines  │  Load train/val/test
+│   │   ├── graph_builder.py        124 lines  │  Binary graph
+│   │   └── graph_builder_time_decay.py  142 lines  │  Time-decay graph
+│
+├── 🎓 TRAINING
+│   ├── train_lightGCN_v2.py        420 lines  │  LightGCN training
+│   └── train_ngcf.py               436 lines  │  NGCF training
+│
+├── 📈 EVALUATION
+│   ├── evaluate_lightgcn.py        227 lines  │  LightGCN eval
+│   └── evaluate_ngcf.py            230 lines  │  NGCF eval
+│
+├── 💾 DATA
+│   └── data/h_m/
+│       ├── train.txt               556,884 users
+│       ├── val.txt                 556,884 users (1 item each)
+│       ├── test.txt                556,884 users (1 item each)
+│       ├── user_id_map_9m.csv
+│       └── item_id_map_9m.csv
+│
+└── ⚙️ CONFIG
+    └── requirements.txt            torch, numpy, pandas
+
+
+🎓 LỘ TRÌNH ĐỌC
+===============
+
+🔰 Beginner (1 giờ)
+    START.md (5') → README.md (20') → EXAMPLES.md Scenario 1 (30')
+
+🎯 Intermediate (2-3 giờ)
+    README.md (30') → EXAMPLES.md All (1-2h) → TECHNICAL_DETAILS.md (45')
+
+🚀 Advanced (1-2 tuần)
+    TECHNICAL_DETAILS.md (2-3h) → Source Code (3-4h) → Papers → Research
+
+
+📊 THỐNG KÊ
+===========
+
+Documentation:      7 files, 3,141 lines, ~85 KB
+Source Code:        ~1,500 lines Python
+Dataset:            556,884 users × 43,847 items
+Models:             2 (LightGCN + NGCF)
+Examples:           7 practical scenarios
+Estimated Learning: 5-10 hours (all docs)
+
+
+🎯 QUICK START
+==============
+
+1. pip install torch numpy pandas
+2. python train_lightGCN_v2.py --epochs 3 --steps_per_epoch 50
+3. python evaluate_lightgcn.py --checkpoint <path> --split test
+
+Done! 🎉
+
+
+📞 HỖ TRỢ
+=========
+
+📖 Đọc docs    → INDEX.md or GUIDE.md
+🚀 Chạy nhanh  → START.md
+❓ Có câu hỏi  → README.md → Troubleshooting
+🐛 Có lỗi     → EXAMPLES.md → Scenario 6
+🔬 Hiểu sâu    → TECHNICAL_DETAILS.md
+
+
+✨ FEATURES
+==========
+
+✅ 2 mô hình SOTA (LightGCN + NGCF)
+✅ Time-decay weighting
+✅ Early stopping
+✅ 5 evaluation metrics
+✅ GPU support
+✅ Batch inference
+✅ Comprehensive docs
+✅ Production-ready
+
+
+📚 BẮT ĐẦU
+==========
+
+Đọc INDEX.md hoặc START.md để bắt đầu!
+
+Happy Learning! 🎓
+Happy Coding! 💻
+Happy Building! 🚀
+
