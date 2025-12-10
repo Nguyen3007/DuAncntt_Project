@@ -120,10 +120,12 @@ Thư viện chính:
 - `numpy` - Xử lý mảng số
 - `pandas` - Xử lý dữ liệu dạng bảng
 
-Thư viện bổ sung cho ALS:
+Thư viện bổ sung cho ALS (cài đặt riêng nếu cần):
 ```bash
 pip install scipy implicit
 ```
+
+*Lưu ý: scipy và implicit không có trong requirements.txt, cài đặt riêng khi muốn sử dụng ALS.*
 
 ## Sử Dụng
 
@@ -375,10 +377,14 @@ data/my_dataset/
 ```
 
 3. (Tùy chọn) Tạo time-decay weights:
-```bash
-# Tự implement logic tính time-decay
-python scripts/create_time_weights.py --input interactions.csv --output train_time_weights.csv
-```
+
+   Bạn cần tự tạo file `train_time_weights.csv` với format:
+   ```csv
+   u,v,weight
+   user_id,item_id,weight_value
+   ```
+   
+   Trong đó `weight` có thể tính bằng hàm time-decay như: `weight = exp(-α * days_since_interaction)`
 
 4. Chạy training:
 ```bash
