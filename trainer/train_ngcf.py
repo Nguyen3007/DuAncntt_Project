@@ -207,8 +207,8 @@ def parse_args():
     # Eval / early stopping
     parser.add_argument("--val_K", type=int, default=20)
     parser.add_argument("--eval_every", type=int, default=1)
-    parser.add_argument("--early_stop_patience", type=int, default=5)
-    parser.add_argument("--eval_user_batch_size", type=int, default=1024)
+    parser.add_argument("--early_stop_patience", type=int, default=3)
+    parser.add_argument("--eval_user_batch_size", type=int, default=2048)
 
     # Device & checkpoint
     parser.add_argument("--device", type=str, default="cuda")
