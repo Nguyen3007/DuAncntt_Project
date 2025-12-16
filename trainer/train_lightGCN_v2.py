@@ -172,13 +172,13 @@ def parse_args():
     parser.add_argument("--data_dir", type=str, default="data/h_m")
 
     # Model
-    parser.add_argument("--emb_dim", type=int, default=64)
+    parser.add_argument("--emb_dim", type=int, default=128)
     parser.add_argument("--n_layers", type=int, default=2)
     parser.add_argument("--reg_weight", type=float, default=1e-3)
 
     # Train
     parser.add_argument("--lr", type=float, default=5e-4)
-    parser.add_argument("--batch_size", type=int, default=16384)
+    parser.add_argument("--batch_size", type=int, default=4096)
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--steps_per_epoch", type=int, default=800)
     parser.add_argument("--seed", type=int, default=42)
