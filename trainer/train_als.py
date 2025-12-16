@@ -139,7 +139,18 @@ def parse_args():
 
     # Data
     parser.add_argument("--data_dir", type=str, default="data/h_m")
+    parser.add_argument(
+        "--use_time_decay",
+        action="store_true",
+        help="Use time-decayed interaction weights"
+    )
 
+    parser.add_argument(
+        "--time_weight_csv",
+        type=str,
+        default=None,
+        help="Path to train_time_weights.csv"
+    )
     # ALS hyperparams
     parser.add_argument("--factors", type=int, default=64, help="Embedding dim")
     parser.add_argument("--reg", type=float, default=1e-2, help="L2 regularization")
@@ -195,16 +206,30 @@ def main():
     num_items = loader.num_items
 
     # 2) Xây sparse matrix implicit: user_items (U x I)
-    #    mỗi (u, i) trong train_pos có r_ui = 1
     rows = []
     cols = []
     data = []
 
-    for u, items in train_pos.items():
-        for i in items:
-            rows.append(u)  # row = user index
-            cols.append(i)  # col = item index
-            data.append(1.0)  # implicit count
+    if args.use_time_decay:
+        assert args.time_weight_csv is not None, "time_weight_csv must be provided"
+        import pandas as pd
+        print(f"[ALS] Using time-decay weights from: {args.time_weight_csv}")
+        df = pd.read_csv(args.time_weight_csv)
+
+        # columns: u, v, weight
+        for row in df.itertuples(index=False):
+            rows.append(int(row.u))
+            cols.append(int(row.v))
+            data.append(float(row.weight))
+
+
+    else:
+        # Baseline ALS: binary implicit feedback
+        for u, items in train_pos.items():
+            for i in items:
+                rows.append(u)
+                cols.append(i)
+                data.append(1.0)
 
     user_items = sp.coo_matrix(
         (data, (rows, cols)),
