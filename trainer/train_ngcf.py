@@ -186,8 +186,8 @@ def parse_args():
     parser.add_argument("--data_dir", type=str, default="data/h_m")
 
     # Model
-    parser.add_argument("--emb_dim", type=int, default=128)
-    parser.add_argument("--layer_sizes", type=int, nargs="+", default=[128, 128])
+    parser.add_argument("--emb_dim", type=int, default=64)
+    parser.add_argument("--layer_sizes", type=int, nargs="+", default=[64, 64])
     parser.add_argument("--reg_weight", type=float, default=1e-3)
     parser.add_argument("--mess_dropout", type=float, default=0.1)
     parser.add_argument("--leaky_relu_slope", type=float, default=0.2)
