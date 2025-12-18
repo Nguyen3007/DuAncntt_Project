@@ -228,7 +228,7 @@ def parse_args():
     # Eval
     p.add_argument("--eval_K", type=int, default=20)
     p.add_argument("--eval_batch_users", type=int, default=4096)
-    p.add_argument("--early_stop_patience", type=int, default=10)
+    p.add_argument("--early_stop_patience", type=int, default=5)
 
     # Checkpoint
     p.add_argument("--checkpoint_dir", type=str, default="checkpoints")

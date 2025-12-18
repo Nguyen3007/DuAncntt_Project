@@ -6,7 +6,8 @@ from typing import Dict, List
 
 import numpy as np
 import torch
-
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.data_utils.dataloader import TxtCFDataLoader
 from src.data_utils.graph_builder import GraphBuilder
 from src.models.LightGCN import LightGCN
