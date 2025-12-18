@@ -156,8 +156,8 @@ Các file mapping để chuyển đổi giữa ID gốc và ID đã được mã
 ### Cài Đặt Nhanh
 
 ```bash
-# Clone repository
-git clone https://github.com/Nguyen3007/DuAncntt_Project.git
+# Clone repository (thay <username> bằng tên người dùng GitHub của bạn)
+git clone https://github.com/<username>/DuAncntt_Project.git
 cd DuAncntt_Project
 
 # Cài đặt dependencies
@@ -439,7 +439,7 @@ Mỗi lần huấn luyện tạo ra hai checkpoints:
 ### H&M Dataset
 Dataset từ H&M Fashion Recommendations, đã được xử lý sẵn và chia thành train/val/test:
 - Users: Khách hàng H&M
-- Items: Sản phẩm thời trang  
+- Items: Sản phẩm thời trang
 - Interactions: Lịch sử mua hàng
 - Files bao gồm:
   - `train.txt`, `val.txt`, `test.txt`: Dữ liệu đã split
@@ -462,13 +462,16 @@ Kết quả điển hình trên H&M dataset (Recall@20):
 
 | Model | Recall@20 | NDCG@20 | Training Time | Complexity |
 |-------|-----------|---------|---------------|------------|
-| MFBPR | ~0.06-0.09 | ~0.04-0.06 | Nhanh | Thấp |
 | ALS | ~0.05-0.08 | ~0.03-0.05 | Nhanh | Thấp |
+| MFBPR | ~0.06-0.09 | ~0.04-0.06 | Nhanh | Thấp |
 | LightGCN | ~0.08-0.12 | ~0.05-0.08 | Trung bình | Trung bình |
 | NGCF | ~0.09-0.13 | ~0.06-0.09 | Chậm | Cao |
 | LightGCN + Time-Decay | ~0.10-0.14 | ~0.06-0.09 | Trung bình | Trung bình |
 
-*Lưu ý: Kết quả phụ thuộc vào hyperparameters và cách chia dữ liệu*
+*Lưu ý: 
+- Kết quả phụ thuộc vào hyperparameters và cách chia dữ liệu
+- MFBPR có thể đạt kết quả tốt hơn ALS nhờ được tối ưu với BPR loss và gradient descent
+- Graph-based models (LightGCN, NGCF) thường cho kết quả tốt hơn do tận dụng cấu trúc đồ thị*
 
 ## Kiến Trúc Kỹ Thuật
 
