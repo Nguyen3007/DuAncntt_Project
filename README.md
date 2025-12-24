@@ -12,7 +12,7 @@ Dự án này triển khai bốn mô hình học sâu phổ biến cho bài toá
 - **ALS** - Alternating Least Squares (baseline sử dụng thư viện implicit)
 
 Các mô hình được thiết kế để hoạt động trên đồ thị lưỡng phân user-item, hỗ trợ cả trọng số nhị phân và trọng số time-decay.
-
+Liên kết Kaggle Notebook xử lý dữ liệu: https://www.kaggle.com/code/nguyenlez/xuly-data-duan
 ## Cấu Trúc Dự Án
 
 ```
